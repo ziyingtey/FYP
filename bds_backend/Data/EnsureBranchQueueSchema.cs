@@ -102,6 +102,10 @@ public static class EnsureBranchQueueSchema
             ALTER TABLE [Branches] ADD [Phone] nvarchar(80) NULL;
             """);
         db.Database.ExecuteSqlRaw("""
+            IF COL_LENGTH(N'Branches', N'PlaceId') IS NULL
+            ALTER TABLE [Branches] ADD [PlaceId] nvarchar(200) NULL;
+            """);
+        db.Database.ExecuteSqlRaw("""
             IF COL_LENGTH(N'Branches', N'Latitude') IS NULL
             ALTER TABLE [Branches] ADD [Latitude] float NULL;
             """);

@@ -5,6 +5,7 @@ export type Branch = {
   state: string;
   address: string | null;
   phone: string | null;
+  placeId?: string | null;
   latitude: number | null;
   longitude: number | null;
   crowdLevel: 'Low' | 'Moderate' | 'High';

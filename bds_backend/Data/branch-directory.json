@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Public Bank Bangsar",
+    "state": "Kuala Lumpur",
+    "address": "36 & 38, Jalan Maarof, Bangsar, 59100 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+    "placeId": "ChIJxdmVYZFJzDER4yKg5yYf9is",
+    "latitude": 3.131509,
+    "longitude": 101.672172
+  },
+  {
+    "name": "Public Bank - Damansara Heights",
+    "state": "Kuala Lumpur",
+    "address": "36-40, Jalan Medan Setia 2, Bukit Damansara, 50490 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+    "placeId": "ChIJNTJNrANJzDERLHK_c2sSfBY",
+    "latitude": 3.1492027,
+    "longitude": 101.6535709
+  },
+  {
+    "name": "Public Bank Melaka",
+    "state": "Melaka",
+    "address": "60-68, Jalan Laksamana, Banda Hilir, 75000 Melaka, Malaysia",
+    "placeId": "ChIJAQAQ5t7x0TERWgxE_DpubqQ",
+    "latitude": 2.195696,
+    "longitude": 102.2512179
+  },
+  {
+    "name": "Public Bank Kepong",
+    "state": "Kuala Lumpur",
+    "address": "147-153, Jln Rimbunan Raya 1, Laman Rimbunan, 52100 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+    "placeId": "ChIJBeMSYThGzDEROm46GK8yn0M",
+    "latitude": 3.2126333,
+    "longitude": 101.6473306
+  },
+  {
+    "name": "Public Bank @ Ampang",
+    "state": "Selangor",
+    "address": "No. 22 & 24, Jalan Wawasan 2/12, Bandar Baru Ampang, 68000 Ampang, Selangor, Malaysia",
+    "placeId": "ChIJgZd90-I2zDERZbuiWGPhsuk",
+    "latitude": 3.1460103,
+    "longitude": 101.7658978
+  },
+  {
+    "name": "Public Bank Alor Setar",
+    "state": "Kedah",
+    "address": "1070 & 1071, Jalan Teluk Wanjah, Alor Setar 05200, Kedah, Malaysia",
+    "placeId": "ChIJ92kHGMRESzAROUYpDncDK0E",
+    "latitude": 6.125349,
+    "longitude": 100.3698845
+  },
+  {
+    "name": "Public Bank Taman Melawati",
+    "state": "Selangor",
+    "address": "262-265, Jalan Bandar 12, Taman Melawati, 53100 Kuala Lumpur, Selangor, Malaysia",
+    "placeId": "ChIJzXh1bEo4zDERTRUMpvx4yXY",
+    "latitude": 3.20982,
+    "longitude": 101.74734
+  }
+]

@@ -16,42 +16,52 @@ import type { Branch } from '../types/models';
 import { waitLabelFromSource } from '../types/models';
 import { userSession } from '../state/userSession';
 import { MALAYSIAN_STATES } from '../data/malaysianStates';
+import { resolveBestLocation } from '../utils/location';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BranchDiscovery'>;
 
-function mapBranch(b: BranchListItem): Branch {
-  const cl = b.crowdLevel;
+function mapBranch(branch: BranchListItem): Branch {
   const crowdLevel: Branch['crowdLevel'] =
-    cl === 'Low' || cl === 'Moderate' || cl === 'High' ? cl : 'Low';
+    branch.crowdLevel === 'Low' ||
+    branch.crowdLevel === 'Moderate' ||
+    branch.crowdLevel === 'High'
+      ? branch.crowdLevel
+      : 'Low';
+
   return {
-    id: b.id,
-    name: b.name,
-    state: b.state ?? '',
-    address: b.address ?? null,
-    phone: b.phone ?? null,
-    latitude: b.latitude ?? null,
-    longitude: b.longitude ?? null,
-    distanceKm: b.distanceKm,
+    id: branch.id,
+    name: branch.name,
+    state: branch.state ?? '',
+    address: branch.address ?? null,
+    phone: branch.phone ?? null,
+    placeId: branch.placeId ?? null,
+    latitude: branch.latitude ?? null,
+    longitude: branch.longitude ?? null,
+    distanceKm: branch.distanceKm,
     crowdLevel,
-    slotCapacity: b.slotCapacity,
-    slotBooked: b.slotBooked,
-    waitingCount: b.waitingCount,
-    bookingDisabled: b.bookingDisabled,
-    hasAvailableSlot: b.hasAvailableSlot,
-    isOvercrowded: b.isOvercrowded,
-    canBook: b.canBook,
-    estimatedWaitMinutes: b.estimatedWaitMinutes,
-    estimateSource: b.estimateSource,
+    slotCapacity: branch.slotCapacity,
+    slotBooked: branch.slotBooked,
+    waitingCount: branch.waitingCount,
+    bookingDisabled: branch.bookingDisabled,
+    hasAvailableSlot: branch.hasAvailableSlot,
+    isOvercrowded: branch.isOvercrowded,
+    canBook: branch.canBook,
+    estimatedWaitMinutes: branch.estimatedWaitMinutes,
+    estimateSource: branch.estimateSource,
   };
 }
 
-function formatGeocodedPlace(a: Location.LocationGeocodedAddress): string {
-  const chunks = [a.city, a.district, a.subregion, a.region].filter(
-    (x): x is string => typeof x === 'string' && x.length > 0
+function formatGeocodedPlace(address: Location.LocationGeocodedAddress): string {
+  const chunks = [address.city, address.district, address.subregion, address.region].filter(
+    (value): value is string => typeof value === 'string' && value.length > 0
   );
   const uniq = [...new Set(chunks)];
-  if (uniq.length > 0) return uniq.join(' · ');
-  if (a.name) return a.name;
+  if (uniq.length > 0) {
+    return uniq.join(' · ');
+  }
+  if (address.name) {
+    return address.name;
+  }
   return '';
 }
 
@@ -63,6 +73,7 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
   const [detectedCoords, setDetectedCoords] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [locationHint, setLocationHint] = useState<string | null>(null);
+  const [locationSource, setLocationSource] = useState<'current' | 'lastKnown' | null>(null);
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [stateFilter, setStateFilter] = useState<string | undefined>(undefined);
 
@@ -76,8 +87,8 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
         userLng: userGps?.lng,
       });
       setBranches(raw.map(mapBranch));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
       setBranches([]);
     } finally {
       setLoading(false);
@@ -90,32 +101,41 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       setLocationLoading(true);
       setLocationHint(null);
       setDetectedLabel(null);
       setDetectedCoords(null);
+
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (cancelled) return;
-        if (status !== Location.PermissionStatus.GRANTED) {
-          setLocationHint('Allow location to show where you are (e.g. Labis when you are there).');
+        if (cancelled) {
           return;
         }
+        if (status !== Location.PermissionStatus.GRANTED) {
+          setLocationSource(null);
+          setLocationHint('Allow location to show where you are now.');
+          return;
+        }
+
         const servicesOn = await Location.hasServicesEnabledAsync();
         if (!servicesOn) {
-          setLocationHint('Turn on GPS/Location in system settings.');
+          setLocationSource(null);
+          setLocationHint('Turn on GPS/location in system settings.');
           return;
         }
-        let pos =
-          (await Location.getLastKnownPositionAsync({
-            maxAge: 120_000,
-            requiredAccuracy: 500,
-          })) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-        if (cancelled) return;
-        const { latitude, longitude } = pos.coords;
+
+        const resolved = await resolveBestLocation();
+        if (cancelled) {
+          return;
+        }
+
+        const { latitude, longitude } = resolved.position.coords;
         setUserGps({ lat: latitude, lng: longitude });
+        setLocationSource(resolved.source);
         setDetectedCoords(`${latitude.toFixed(5)}°, ${longitude.toFixed(5)}°`);
+
         try {
           const places = await Location.reverseGeocodeAsync({ latitude, longitude });
           const first = places[0];
@@ -124,35 +144,36 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
         } catch {
           setDetectedLabel('Location acquired');
         }
-      } catch (e) {
+      } catch (locationError) {
         if (!cancelled) {
-          setLocationHint(e instanceof Error ? e.message : String(e));
+          setLocationSource(null);
+          setLocationHint(locationError instanceof Error ? locationError.message : String(locationError));
         }
       } finally {
-        if (!cancelled) setLocationLoading(false);
+        if (!cancelled) {
+          setLocationLoading(false);
+        }
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const waitFor = (b: Branch) => ({
-    mins: Math.round(b.estimatedWaitMinutes),
-    label: waitLabelFromSource(b.estimateSource),
+  const waitFor = (branch: Branch) => ({
+    mins: Math.round(branch.estimatedWaitMinutes),
+    label: waitLabelFromSource(branch.estimateSource),
   });
 
-  const candidates = useMemo(
-    () => branches.filter((b) => b.canBook),
-    [branches]
-  );
+  const candidates = useMemo(() => branches.filter((branch) => branch.canBook), [branches]);
 
   const recommended = useMemo(() => {
-    if (branches.length === 0) return null;
+    if (branches.length === 0) {
+      return null;
+    }
     const pool = candidates.length > 0 ? candidates : branches;
-    return pool.reduce((best, b) =>
-      waitFor(b).mins <= waitFor(best).mins ? b : best
-    );
+    return pool.reduce((best, branch) => (waitFor(branch).mins <= waitFor(best).mins ? branch : best));
   }, [branches, candidates]);
 
   const recWait = recommended ? waitFor(recommended) : null;
@@ -165,7 +186,7 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
         {locationLoading ? (
           <View style={styles.chipLoadingRow}>
             <ActivityIndicator size="small" />
-            <Text style={styles.chipText}> Detecting…</Text>
+            <Text style={styles.chipText}> Detecting...</Text>
           </View>
         ) : locationHint ? (
           <Text style={styles.chipText}>{locationHint}</Text>
@@ -173,18 +194,19 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
           <>
             <Text style={styles.chipTitle}>{detectedLabel ?? 'Unknown'}</Text>
             {detectedCoords ? <Text style={styles.chipCoords}>{detectedCoords}</Text> : null}
+            {locationSource ? (
+              <Text style={styles.chipCoords}>
+                Fix source: {locationSource === 'lastKnown' ? 'cached device location' : 'live device location'}
+              </Text>
+            ) : null}
           </>
         )}
       </View>
       <Text style={styles.locationNote}>
-        Distances (km) use your GPS when permission is on: the app sends coordinates to the server so
-        distanceKm is recalculated (Haversine). Filter by state like the official branch locator.
+        Distances use your current GPS coordinates when available. If you see "cached device location", refresh the
+        screen or set a mock location in the emulator before trusting the nearest branch result.
       </Text>
-      <Pressable
-        onPress={() =>
-          Linking.openURL('https://www.pbebank.com/en/branch-locator/')
-        }
-      >
+      <Pressable onPress={() => Linking.openURL('https://www.pbebank.com/en/branch-locator/')}>
         <Text style={styles.officialLink}>Official PBE branch locator (reference for real addresses)</Text>
       </Pressable>
 
@@ -196,13 +218,13 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
         >
           <Text style={[styles.stateChipText, !stateFilter && styles.stateChipTextOn]}>All</Text>
         </Pressable>
-        {MALAYSIAN_STATES.map((s) => (
+        {MALAYSIAN_STATES.map((state) => (
           <Pressable
-            key={s}
-            style={[styles.stateChip, stateFilter === s && styles.stateChipOn]}
-            onPress={() => setStateFilter(s)}
+            key={state}
+            style={[styles.stateChip, stateFilter === state && styles.stateChipOn]}
+            onPress={() => setStateFilter(state)}
           >
-            <Text style={[styles.stateChipText, stateFilter === s && styles.stateChipTextOn]}>{s}</Text>
+            <Text style={[styles.stateChipText, stateFilter === state && styles.stateChipTextOn]}>{state}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -210,7 +232,7 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
       {loading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator />
-          <Text style={styles.muted}> Loading branches…</Text>
+          <Text style={styles.muted}> Loading branches...</Text>
         </View>
       ) : null}
 
@@ -226,15 +248,12 @@ export function BranchDiscoveryScreen({ navigation }: Props) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Smart Branch Recommendation</Text>
           <Text style={styles.cardSub}>
-            {recommended.name} • {recommended.distanceKm.toFixed(1)} km • ~{recWait.mins} mins (
-            {recWait.label})
+            {recommended.name} · {recommended.distanceKm.toFixed(1)} km · ~{recWait.mins} mins ({recWait.label})
           </Text>
         </View>
       ) : null}
 
-      <Text style={styles.section}>
-        Branches{stateFilter ? ` — ${stateFilter}` : ' — all states'}
-      </Text>
+      <Text style={styles.section}>Branches{stateFilter ? ` - ${stateFilter}` : ' - all states'}</Text>
       {branches.map((branch) => (
         <BranchCard
           key={branch.id}
@@ -278,15 +297,11 @@ function BranchCard({
       {branch.address ? <Text style={styles.addr}>{branch.address}</Text> : null}
       {branch.phone ? <Text style={styles.phone}>{branch.phone}</Text> : null}
       <Text style={styles.muted}>
-        {branch.state ? `${branch.state} • ` : ''}
-        {branch.distanceKm.toFixed(1)} km • Waiting: {branch.waitingCount} • Est. wait ~{waitInfo.mins}{' '}
-        min ({waitInfo.label})
+        {branch.state ? `${branch.state} · ` : ''}
+        {branch.distanceKm.toFixed(1)} km · Waiting: {branch.waitingCount} · Est. wait ~{waitInfo.mins} min (
+        {waitInfo.label})
       </Text>
-      <Pressable
-        style={[styles.bookBtn, blocked && styles.bookBtnDisabled]}
-        onPress={onBook}
-        disabled={blocked}
-      >
+      <Pressable style={[styles.bookBtn, blocked && styles.bookBtnDisabled]} onPress={onBook} disabled={blocked}>
         <Text style={styles.bookBtnText}>
           {branch.bookingDisabled || branch.isOvercrowded
             ? 'Temporarily Unavailable'

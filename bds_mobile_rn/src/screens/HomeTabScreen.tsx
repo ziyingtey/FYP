@@ -14,8 +14,8 @@ export function HomeTabScreen({ navigation }: { navigation: RootNavigation }) {
         style={[styles.card, styles.cardSpacing]}
         onPress={() => navigation.navigate('BranchMap')}
       >
-        <Text style={styles.cardTitle}>Nearest branch map</Text>
-        <Text style={styles.cardSub}>GPS, map, and closest branch (Haversine)</Text>
+        <Text style={styles.cardTitle}>Branch Locator Map</Text>
+        <Text style={styles.cardSub}>Detect location, show all branches, and jump to nearest</Text>
       </Pressable>
       <Pressable
         style={styles.card}

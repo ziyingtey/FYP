@@ -26,7 +26,11 @@ public class BranchesController(
         [FromQuery] double? userLng,
         CancellationToken ct)
     {
-        var q = db.Branches.AsNoTracking().AsQueryable();
+        var q = db.Branches.AsNoTracking()
+            .Where(b => !string.IsNullOrWhiteSpace(b.State)
+                        && b.Latitude != null
+                        && b.Longitude != null)
+            .AsQueryable();
         if (!string.IsNullOrWhiteSpace(state))
         {
             var norm = state.Trim();
@@ -75,6 +79,7 @@ public class BranchesController(
                 State = b.State,
                 Address = b.Address,
                 Phone = b.Phone,
+                PlaceId = b.PlaceId,
                 Latitude = b.Latitude,
                 Longitude = b.Longitude,
                 DistanceKm = distanceKm,

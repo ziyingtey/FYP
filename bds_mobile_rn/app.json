@@ -11,16 +11,23 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bds.smartbranch"
+      "bundleIdentifier": "com.bds.smartbranch",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow this app to access your location to find the nearest bank branch."
+      }
     },
     "android": {
-      "package": "com.bds.smartbranch"
+      "package": "com.bds.smartbranch",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "plugins": [
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "This app needs your location to find nearest branch"
+          "locationWhenInUsePermission": "Allow this app to access your location to find the nearest bank branch."
         }
       ]
     ]

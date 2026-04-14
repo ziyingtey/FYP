@@ -1,6 +1,8 @@
 using System.Text;
 using bds_backend.Data;
+using bds_backend.Options;
 using bds_backend.Security;
+using bds_backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -14,11 +16,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.Configure<BranchDirectoryOptions>(
+    builder.Configuration.GetSection(BranchDirectoryOptions.SectionName));
+builder.Services.Configure<GoogleMapsOptions>(
+    builder.Configuration.GetSection(GoogleMapsOptions.SectionName));
 builder.Services.AddHttpClient("WaitPrediction", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
 });
-builder.Services.AddScoped<bds_backend.Services.WaitPredictionService>();
+builder.Services.AddHttpClient("GoogleRoutes", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
+builder.Services.AddScoped<WaitPredictionService>();
+builder.Services.AddScoped<BranchDirectorySyncService>();
+builder.Services.AddScoped<GoogleRoutesService>();
 
 builder.Services.AddCors(options =>
 {
@@ -56,6 +68,8 @@ using (var scope = app.Services.CreateScope())
     EnsureBranchQueueSchema.ApplyIfNeeded(db);
     DbSeed.SeedBranches(db);
     DbSeed.SeedBranchDirectoryExpansion(db);
+    var branchDirectorySync = scope.ServiceProvider.GetRequiredService<BranchDirectorySyncService>();
+    await branchDirectorySync.SyncFromFileIfPresentAsync(db);
 }
 
 if (app.Environment.IsDevelopment())
@@ -64,6 +78,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors("AppClients");
 app.UseAuthentication();
 app.UseAuthorization();

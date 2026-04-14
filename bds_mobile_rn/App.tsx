@@ -34,7 +34,7 @@ export default function App() {
         <Stack.Screen
           name="BranchMap"
           component={BranchMapScreen}
-          options={{ title: 'Nearest branch map' }}
+          options={{ title: 'Branch Locator' }}
         />
         <Stack.Screen
           name="BranchDiscovery"

@@ -119,7 +119,7 @@ public static class DbSeed
     }
 
     private static int[] bookedPatternForNewBranch(int id) =>
-        id % 4 switch
+        (id % 4) switch
         {
             1 => [8, 5, 7, 3, 8],
             2 => [8, 8, 8, 8, 8],
